@@ -4,9 +4,7 @@
 
 Do not open public GitHub issues for security vulnerabilities.
 
-Email: **security@YOUR_DOMAIN** (replace before publishing)
-
-Optional: publish a PGP key at `https://YOUR_DOMAIN/.well-known/security.txt`
+Email: **mizlabs99@proton.me** (replace before publishing)
 
 ### What to include
 
