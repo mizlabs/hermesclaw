@@ -7,7 +7,7 @@ labels: security
 
 **Do NOT include exploit details in this issue if the repository is public.**
 
-For sensitive reports, email **security@YOUR_DOMAIN** instead.
+For sensitive reports, email **mizlabs99@proton.me** instead.
 
 ## Summary
 
@@ -23,9 +23,13 @@ For sensitive reports, email **security@YOUR_DOMAIN** instead.
 ## Component
 
 - [ ] PlanValidator / task schemas
+- [ ] Plan normalizer
 - [ ] PathGuard (filesystem)
 - [ ] CommandPolicy (exec)
-- [ ] ApprovalGate
+- [ ] ApprovalGate / PermissionEngine
+- [ ] Plan signing (HMAC tokens)
+- [ ] OpenClaw gateway client
+- [ ] OpenClaw agent bridge
 - [ ] AuditLogger
 - [ ] NetworkPolicy
 - [ ] Orchestrator

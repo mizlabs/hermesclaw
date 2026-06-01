@@ -66,7 +66,7 @@ Threat model: [docs/threat-model.md](docs/threat-model.md)
 **Requirements:** Python 3.11+. Hermes and OpenClaw for full integration; mock mode works without them.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hermesclaw.git
+git clone https://github.com/mizlabs/hermesclaw.git
 cd hermesclaw
 
 python -m venv .venv
@@ -159,15 +159,65 @@ Layout:
 └── tests/
 ```
 
-Configuration (safe defaults):
+Configuration (copy from `config/.env.example`):
+
+```bash
+cp config/.env.example .env
+# Edit .env locally — set PLAN_SIGNING_SECRET (generate per comment in that file)
+# NEVER commit .env — only config/.env.example belongs in git
+./scripts/pre_push_check.sh   # run before git push
+```
+
+Hermes **model/API** is configured in `~/.hermes/` (`hermes model`, `hermes config show`), not via `HERMES_MODEL_*` in HermesClaw `.env`. See [plan.md](plan.md) for the full workflow.
+
+Key defaults:
 
 ```env
 NETWORK_ENABLED=false
 AUTO_APPROVE=false
 WORKSPACE_ROOT=./workspace
-PLAN_SIGNING_SECRET=<set-in-production>
+OPENCLAW_EXECUTION_MODE=auto
+OPENCLAW_GATEWAY_URL=http://localhost:18789
 API_HOST=127.0.0.1
 ```
+
+### OpenClaw gateway bridge
+
+HermesClaw can execute signed plans through a running [OpenClaw gateway](https://docs.openclaw.ai/gateway) instead of the built-in local dispatcher.
+
+1. Start OpenClaw gateway (default port `18789`).
+2. Copy your gateway token into `.env`:
+
+```env
+OPENCLAW_GATEWAY_TOKEN=<from openclaw config get gateway.auth.token>
+OPENCLAW_EXECUTION_MODE=auto   # auto | local | gateway
+```
+
+Execution modes:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` | Use gateway when reachable; fall back to local execution |
+| `local` | Always execute in-process (no HTTP) |
+| `gateway` | Require gateway; fail if unreachable |
+
+HermesClaw maps validated actions to OpenClaw `POST /tools/invoke` when coding tools are exposed over HTTP. On OpenClaw 2026.5.x, file tools often require the **agent fallback** (`openclaw agent --json`) which HermesClaw enables automatically when HTTP returns 404.
+
+```bash
+./scripts/setup_openclaw.sh          # install + configure OpenClaw
+openclaw gateway run --port 18789    # start gateway (separate terminal)
+python -m hermes_openclaw --check-gateway
+```
+
+Set in `.env`:
+
+```env
+OPENCLAW_GATEWAY_TOKEN=<from openclaw config get gateway.auth.token>
+OPENCLAW_EXECUTION_MODE=gateway
+OPENCLAW_AGENT_EXECUTION=true
+```
+
+Security note: gateway bearer tokens are operator credentials. HermesClaw still validates, approves, and signs every plan before anything reaches OpenClaw.
 
 ---
 

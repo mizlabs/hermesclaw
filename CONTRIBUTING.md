@@ -14,7 +14,7 @@ Thanks for looking at this project. Security-sensitive changes get extra review 
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hermesclaw.git
+git clone https://github.com/mizlabs/hermesclaw.git
 cd hermesclaw
 ./scripts/setup.sh
 ```
@@ -45,6 +45,15 @@ pytest -v
 python scripts/run_benchmarks.py
 ```
 
+## Before You Push
+
+```bash
+cp config/.env.example .env   # first time only — edit locally, never commit .env
+./scripts/pre_push_check.sh   # secrets scan + full CI toolchain locally
+```
+
+The pre-push script checks that `.env` is not tracked, `config/.env.example` has no pre-filled signing secret, and pytest/ruff/mypy/bandit/pip-audit pass.
+
 ## Pull Requests
 
 1. Branch from `main`
@@ -71,6 +80,6 @@ python scripts/run_benchmarks.py
 
 ## Questions
 
-GitHub Issues or Discussions: [YOUR_USERNAME/hermesclaw](https://github.com/YOUR_USERNAME/hermesclaw/issues)
+GitHub Issues or Discussions: [mizlabs/hermesclaw](https://github.com/mizlabs/hermesclaw/issues)
 
 For vulnerabilities, use [SECURITY.md](SECURITY.md) — not a public issue.

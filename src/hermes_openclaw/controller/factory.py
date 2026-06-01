@@ -62,7 +62,14 @@ def _build_core(
         dry_run=settings.dry_run,
         execution_timeout_sec=settings.execution_timeout_sec,
         gateway_url=settings.openclaw_gateway_url,
+        gateway_token=settings.openclaw_gateway_token,
+        gateway_session_key=settings.openclaw_gateway_session_key,
+        gateway_timeout_sec=settings.openclaw_gateway_timeout_sec,
+        execution_mode=settings.openclaw_execution_mode,
         require_signed_token=settings.require_signed_token,
+        openclaw_cli_path=settings.openclaw_cli_path,
+        openclaw_agent_execution=settings.openclaw_agent_execution,
+        workspace_root=workspace,
     )
     feedback = FeedbackEngine(audit, max_retries=settings.max_retry_attempts)
     return (
@@ -79,7 +86,10 @@ def _build_core(
 def build_hermes_adapter(settings: Settings) -> HermesAdapter:
     if settings.hermes_mock_mode:
         return MockHermesAdapter()
-    return CliHermesAdapter(cli_path=settings.hermes_cli_path)
+    return CliHermesAdapter(
+        cli_path=settings.hermes_cli_path,
+        workspace_root=str(settings.workspace_root.resolve()),
+    )
 
 
 def build_orchestrator(settings: Settings) -> Orchestrator:

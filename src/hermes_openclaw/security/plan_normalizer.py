@@ -36,7 +36,32 @@ def normalize_plan_dict(data: dict[str, Any]) -> dict[str, Any]:
         raw_type = action.pop("action", None) or action.get("type", "")
         if isinstance(raw_type, str):
             action["type"] = ACTION_ALIASES.get(raw_type, raw_type)
-        actions.append(action)
+        actions.append(normalize_action_dict(action))
 
     normalized["actions"] = actions
+    return normalized
+
+
+def _blank_to_none(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    return stripped if stripped else None
+
+
+def normalize_action_dict(action: dict[str, Any]) -> dict[str, Any]:
+    """Fix common Hermes planner mistakes before schema validation."""
+    normalized = dict(action)
+    for key in ("source", "destination", "command", "app_name"):
+        if key in normalized:
+            normalized[key] = _blank_to_none(normalized.get(key))
+
+    action_type = normalized.get("type")
+    if action_type == "create_folder":
+        destination = normalized.get("destination")
+        source = normalized.get("source")
+        if not destination and source:
+            normalized["destination"] = source
+            normalized["source"] = None
+
     return normalized

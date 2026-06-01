@@ -6,6 +6,7 @@ import shutil
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Literal
 
 import structlog
 
@@ -19,6 +20,15 @@ from hermes_openclaw.models.execution import (
 from hermes_openclaw.models.scopes import PermissionScope
 from hermes_openclaw.models.tasks import ActionType
 from hermes_openclaw.models.validation import ValidatedAction, ValidatedPlan
+from hermes_openclaw.openclaw.agent_bridge import OpenClawAgentBridge
+from hermes_openclaw.openclaw.gateway_client import GatewayInvokeError, OpenClawGatewayClient
+from hermes_openclaw.openclaw.tool_mapping import (
+    format_gateway_result,
+    map_action_to_calls,
+    mapping_precheck,
+    resolve_copy_write_args,
+    scopes_for_action,
+)
 from hermes_openclaw.security.audit import AuditLogger
 from hermes_openclaw.security.command_policy import CommandPolicy, CommandPolicyError
 from hermes_openclaw.security.path_guard import PathGuard
@@ -26,6 +36,8 @@ from hermes_openclaw.security.plan_signing import PlanSigner
 from hermes_openclaw.security.rate_limiter import ExecutionRateLimiter, RateLimitExceeded
 
 logger = structlog.get_logger()
+
+ExecutionMode = Literal["auto", "local", "gateway"]
 
 
 class ExecutionAdapter(ABC):
@@ -56,7 +68,15 @@ class OpenClawAdapter(ExecutionAdapter):
         dry_run: bool = False,
         execution_timeout_sec: int = 300,
         gateway_url: str | None = None,
+        gateway_token: str = "",
+        gateway_session_key: str = "main",
+        gateway_timeout_sec: int = 30,
+        execution_mode: ExecutionMode = "auto",
         require_signed_token: bool = True,
+        gateway_client: OpenClawGatewayClient | None = None,
+        openclaw_cli_path: str = "openclaw",
+        openclaw_agent_execution: bool = True,
+        workspace_root: Path | None = None,
     ) -> None:
         self._path_guard = path_guard
         self._command_policy = command_policy
@@ -65,8 +85,22 @@ class OpenClawAdapter(ExecutionAdapter):
         self._rate_limiter = rate_limiter
         self._dry_run = dry_run
         self._timeout = execution_timeout_sec
-        self._gateway_url = gateway_url
+        self._execution_mode = execution_mode
         self._require_token = require_signed_token
+        self._gateway: OpenClawGatewayClient | None = gateway_client
+        if self._gateway is None and gateway_url:
+            self._gateway = OpenClawGatewayClient(
+                gateway_url,
+                token=gateway_token,
+                session_key=gateway_session_key,
+                timeout_sec=float(gateway_timeout_sec),
+            )
+        self._gateway_active: bool | None = None
+        self._openclaw_cli_path = openclaw_cli_path
+        self._openclaw_agent_execution = openclaw_agent_execution
+        self._workspace_root = workspace_root
+        self._gateway_token = gateway_token
+        self._gateway_session_key = gateway_session_key
 
     async def execute(
         self, validated: ValidatedPlan, audit_id: str | None = None
@@ -229,9 +263,14 @@ class OpenClawAdapter(ExecutionAdapter):
             return scope_check
 
         try:
-            message, log = self._dispatch(validated)
+            message, log = self._dispatch_action(validated, task_id)
             status = ExecutionStatus.SUCCESS
             reason = None
+        except GatewayInvokeError as exc:
+            message = str(exc)
+            status = ExecutionStatus.FAILURE
+            reason = exc.reason
+            log = message
         except PermissionError as exc:
             message = str(exc)
             status = ExecutionStatus.FAILURE
@@ -277,6 +316,114 @@ class OpenClawAdapter(ExecutionAdapter):
             return None  # Always enforced globally
         return None
 
+    def _should_use_gateway(self) -> bool:
+        if self._execution_mode == "local":
+            return False
+        if self._gateway is None or not self._gateway.configured:
+            return False
+        if self._execution_mode == "gateway":
+            return True
+        if self._gateway_active is not None:
+            return self._gateway_active
+        active = self._gateway.ping()
+        self._gateway_active = active
+        if not active:
+            logger.info("openclaw_gateway_unavailable_using_local")
+            self._audit.record("openclaw_gateway_fallback_local", outcome="fallback")
+        return active
+
+    def _dispatch_action(self, validated: ValidatedAction, task_id: str) -> tuple[str, str]:
+        if self._execution_mode == "gateway" and (
+            self._gateway is None or not self._gateway.configured
+        ):
+            raise GatewayInvokeError(
+                "OPENCLAW_GATEWAY_URL is required when OPENCLAW_EXECUTION_MODE=gateway",
+                reason=FailureReason.UNKNOWN,
+            )
+        if self._should_use_gateway() and self._gateway is not None:
+            return self._dispatch_via_gateway(validated, task_id)
+        return self._dispatch_local(validated)
+
+    def _dispatch_via_gateway(self, validated: ValidatedAction, task_id: str) -> tuple[str, str]:
+        precheck = mapping_precheck(validated, command_policy=self._command_policy)
+        if precheck is not None:
+            raise precheck
+
+        try:
+            return self._dispatch_via_gateway_http(validated, task_id)
+        except GatewayInvokeError as exc:
+            if exc.status_code != 404 or not self._openclaw_agent_execution:
+                raise
+            logger.info("openclaw_http_tools_unavailable_using_agent", tool=exc.tool)
+            self._audit.record(
+                "openclaw_gateway_agent_fallback",
+                task_id=task_id,
+                details={"tool": exc.tool, "reason": str(exc)},
+                outcome="fallback",
+            )
+            return self._dispatch_via_openclaw_agent(validated, task_id)
+
+    def _dispatch_via_gateway_http(
+        self, validated: ValidatedAction, task_id: str
+    ) -> tuple[str, str]:
+        calls = map_action_to_calls(
+            validated,
+            path_guard=self._path_guard,
+            command_policy=self._command_policy,
+        )
+        scopes = scopes_for_action(validated)
+        logs: list[str] = []
+        read_result: object | None = None
+
+        gateway = self._gateway
+        if gateway is None:
+            raise GatewayInvokeError(
+                "Gateway client not configured",
+                reason=FailureReason.UNKNOWN,
+            )
+        for call in calls:
+            if call.tool == "write" and read_result is not None:
+                call = resolve_copy_write_args(read_result, call)
+            self._audit.record(
+                "openclaw_gateway_invoke",
+                task_id=task_id,
+                details={"tool": call.tool, "args_keys": sorted(call.args.keys())},
+                outcome="running",
+            )
+            result = gateway.invoke(
+                call,
+                scopes=scopes,
+                task_id=task_id,
+            )
+            if call.tool == "read" and validated.action.type == ActionType.COPY_FILE:
+                read_result = result
+            message = format_gateway_result(call.tool, result)
+            logs.append(message)
+
+        return logs[-1], "\n".join(logs)
+
+    def _dispatch_via_openclaw_agent(
+        self, validated: ValidatedAction, task_id: str
+    ) -> tuple[str, str]:
+        token = self._gateway_token
+        bridge = OpenClawAgentBridge(
+            self._openclaw_cli_path,
+            session_key=self._gateway_session_key,
+            gateway_token=token,
+            timeout_sec=self._timeout,
+            workspace_root=str(self._workspace_root) if self._workspace_root else None,
+        )
+        self._audit.record(
+            "openclaw_agent_invoke",
+            task_id=task_id,
+            details={"action_type": validated.action.type.value},
+            outcome="running",
+        )
+        return bridge.execute(validated, task_id=task_id)
+
+    def _dispatch_local(self, validated: ValidatedAction) -> tuple[str, str]:
+        return self._dispatch(validated)
+
     def _dispatch(self, validated: ValidatedAction) -> tuple[str, str]:
         action = validated.action
 
@@ -286,6 +433,8 @@ class OpenClawAdapter(ExecutionAdapter):
             return msg, msg
 
         if action.type == ActionType.CREATE_FOLDER:
+            if not action.destination and not validated.resolved_destination:
+                raise ValueError("create_folder requires a non-empty destination path")
             path = validated.resolved_destination or str(
                 self._path_guard.resolve(action.destination or "")
             )

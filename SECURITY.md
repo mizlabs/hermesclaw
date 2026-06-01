@@ -4,7 +4,7 @@
 
 Do not open public GitHub issues for security vulnerabilities.
 
-Email: **mizlabs99@proton.me** (replace before publishing)
+Email: **mizlabs99@proton.me** 
 
 ### What to include
 
@@ -69,18 +69,27 @@ Day 30  Public advisory (with reporter consent)
 ## Architecture (summary)
 
 ```
-Untrusted (Hermes / LLM) → Validator → Permission + signing → OpenClaw (constrained)
+User intent
+  → Hermes CLI (hermes -z) — JSON only
+  → Plan normalizer
+  → SecurityValidator
+  → PermissionEngine (approve + sign)
+  → OpenClaw gateway / agent (constrained)
+  → Audit log
 ```
 
-LLM output is not executed directly.
+LLM output is not executed directly. HermesClaw never calls an LLM API itself for planning — it delegates to the Hermes agent CLI, which has its own credentials in `~/.hermes/.env`.
 
 | Control | Implementation |
 |---------|----------------|
 | Schema validation | Pydantic + published JSON Schema |
+| Planner output cleanup | `plan_normalizer.py` |
 | Paths | PathGuard |
 | Commands | CommandPolicy allowlist |
 | Policy | `config/policy.yaml` |
+| User approval | `PermissionEngine` / `ApprovalGate` |
 | Execution auth | SHA256 + HMAC tokens |
+| OpenClaw access | Gateway bearer token (operator credential) |
 | Audit | Hash-chained JSONL |
 | Flooding | ExecutionRateLimiter |
 
@@ -90,15 +99,38 @@ Full detail: [docs/security-architecture.md](docs/security-architecture.md)
 
 ## Production Configuration
 
+Copy `config/.env.example` to `.env` at the project root. **Never commit `.env`.**
+
 ```env
 NETWORK_ENABLED=false
 SAFETY_CONFIRM_DESTRUCTIVE=true
 AUTO_APPROVE=false
+DRY_RUN=false
 WORKSPACE_ROOT=./workspace
 API_HOST=127.0.0.1
-PLAN_SIGNING_SECRET=<strong-random-secret>
 REQUIRE_SIGNED_TOKEN=true
+OPENCLAW_EXECUTION_MODE=gateway
+OPENCLAW_AGENT_EXECUTION=true
+OPENCLAW_GATEWAY_TOKEN=<set locally — operator secret>
+PLAN_SIGNING_SECRET=<generate locally — see below>
 ```
+
+Generate a signing secret locally:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Before `git push`, run `./scripts/pre_push_check.sh` — it verifies `.env` is not tracked and that this template has no pre-filled secrets.
+
+### Credential separation
+
+| Secret | Location | Notes |
+|--------|----------|-------|
+| `PLAN_SIGNING_SECRET` | HermesClaw `.env` | Signs approved plans; leak allows forged execution tokens |
+| `OPENCLAW_GATEWAY_TOKEN` | HermesClaw `.env` | Gateway operator access; treat like a root password on localhost |
+| LLM API keys | `~/.hermes/.env` | Hermes agent only; not in this repository |
+| OpenClaw auth | `~/.openclaw/openclaw.json` | Separate from HermesClaw git tree |
 
 This reduces risk. It does not make the host immune to a compromised OS or a leaked signing secret.
 

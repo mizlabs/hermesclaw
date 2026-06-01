@@ -245,13 +245,23 @@ The bridge invokes Hermes for planning via:
 
 ### OpenClaw API
 
-The bridge sends tasks to OpenClaw via:
+The bridge sends validated, signed plans to OpenClaw via:
 
-- Gateway WebSocket/HTTP API
-- Exec tool for shell commands
-- Skills for GUI and browser automation
+- **Gateway HTTP:** `POST /tools/invoke` on `OPENCLAW_GATEWAY_URL` (default `http://localhost:18789`)
+- **Local fallback:** in-process dispatch when `OPENCLAW_EXECUTION_MODE=local` or gateway is unreachable in `auto` mode
 
-See [OpenClaw Gateway docs](https://docs.openclaw.ai/gateway) for endpoint details.
+Action mapping (HermesClaw → OpenClaw tool):
+
+| Action | OpenClaw tool |
+|--------|---------------|
+| `list_files` | `read` |
+| `create_folder` | `apply_patch` (add `.hermesclaw_keep`) |
+| `copy_file` | `read` + `write` |
+| `move_file` | `apply_patch` (move hunk) |
+| `exec` | `exec` |
+| `launch_app` | `exec` (`open -a …`) |
+
+See [OpenClaw Gateway docs](https://docs.openclaw.ai/gateway) and [tools invoke API](https://docs.openclaw.ai/gateway/tools-invoke-http-api).
 
 ---
 

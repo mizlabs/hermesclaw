@@ -8,7 +8,7 @@ Each folder has a `plan.json` and a short README.
 
 ```bash
 ./scripts/setup.sh
-export PLAN_SIGNING_SECRET="dev-secret-change-me"
+# .env is created from config/.env.example — set PLAN_SIGNING_SECRET there
 ```
 
 ## Scenarios

@@ -22,8 +22,8 @@ Required JSON schema:
   "actions": [
     {
       "type": "<move_file|copy_file|create_folder|list_files|launch_app|exec>",
-      "source": "<path if needed>",
-      "destination": "<path if needed>",
+      "source": "<path if needed — NOT for create_folder>",
+      "destination": "<path if needed — REQUIRED for create_folder>",
       "command": "<allowlisted command if exec>",
       "args": [],
       "app_name": "<app if launch_app>",
@@ -39,7 +39,9 @@ Rules:
 - Output JSON only. No markdown, no code fences, no explanations.
 - Never include shell, script, eval, or raw_command fields.
 - Use only the allowed action types listed above.
-- Classify risk accurately. exec actions are always medium or higher.
+- All paths must be relative to the workspace (e.g. "output/demo", not absolute paths).
+- Classify risk accurately: file operations (create_folder, copy_file, move_file,
+  list_files) must use risk_level "medium" or higher; exec actions must use "medium" or higher.
 """
 
 # Patterns that indicate Hermes emitted raw executable content — must be rejected.
@@ -157,12 +159,21 @@ class CliHermesAdapter(HermesAdapter):
     Hermes is instructed to output JSON only. Raw code in the response is rejected.
     """
 
-    def __init__(self, cli_path: str = "hermes", timeout_sec: int = 120) -> None:
+    def __init__(
+        self,
+        cli_path: str = "hermes",
+        timeout_sec: int = 120,
+        *,
+        workspace_root: str | None = None,
+    ) -> None:
         self._cli_path = cli_path
         self._timeout = timeout_sec
+        self._workspace_root = workspace_root
 
     async def generate_plan(self, user_input: str, context: dict | None = None) -> dict[str, Any]:
         prompt = HERMES_PLANNER_PROMPT
+        if self._workspace_root:
+            prompt += f"\n- Workspace root (all paths must stay inside): {self._workspace_root}"
         replan = (context or {}).get("replan_context", "")
         if replan:
             prompt += f"\n\nPrevious failure context:\n{replan}"

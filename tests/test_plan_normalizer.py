@@ -27,6 +27,28 @@ def test_accepts_tasks_with_action_field(tmp_path: Path):
     assert result.validated_plan.actions[0].action.type.value == "create_folder"
 
 
+def test_create_folder_source_to_destination(tmp_path: Path):
+    validator = SecurityValidator(PathGuard(tmp_path), CommandPolicy(), PolicyEngine())
+    result = validator.validate_sync(
+        {
+            "intent": "create demo folder",
+            "risk_level": "medium",
+            "actions": [
+                {
+                    "type": "create_folder",
+                    "source": "demo",
+                    "destination": "",
+                    "scope": "filesystem.write",
+                }
+            ],
+        }
+    )
+    assert result.valid is True
+    action = result.validated_plan.actions[0]
+    assert action.action.destination == "demo"
+    assert action.resolved_destination == str(tmp_path / "demo")
+
+
 def test_normalizes_move_files_alias(tmp_path: Path):
     validator = SecurityValidator(PathGuard(tmp_path), CommandPolicy(), PolicyEngine())
     result = validator.validate_sync(

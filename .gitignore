@@ -47,6 +47,8 @@ htmlcov/
 
 # Project data
 data/
+workspace/*
+!workspace/.gitkeep
 *.db
 *.sqlite
 *.sqlite3

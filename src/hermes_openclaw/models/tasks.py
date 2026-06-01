@@ -62,6 +62,14 @@ class TaskAction(BaseModel):
             raise ValueError(msg)
         return value
 
+    @field_validator("source", "destination", "command", "app_name", mode="before")
+    @classmethod
+    def blank_to_none(cls, value: str | None) -> str | None:
+        if value is None or not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        return stripped if stripped else None
+
     @field_validator("source", "destination", "command", "app_name")
     @classmethod
     def reject_shell_metacharacters(cls, value: str | None) -> str | None:

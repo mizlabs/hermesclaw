@@ -22,8 +22,8 @@ Security-first development priorities. Features never come before safety.
 - [x] CI pipeline (lint + test)
 - [x] Docker support
 - [x] Security documentation
-- [ ] Hermes planner integration
-- [ ] OpenClaw executor bridge (gateway API)
+- [x] Hermes planner integration (CLI via `hermes -z`)
+- [x] OpenClaw executor bridge (gateway API)
 
 ---
 
@@ -31,8 +31,8 @@ Security-first development priorities. Features never come before safety.
 
 **Goal:** Connect Hermes and OpenClaw through the secure orchestrator.
 
-- [ ] Hermes adapter — invoke planner, receive JSON only
-- [ ] OpenClaw adapter — gateway API with permission scopes
+- [x] Hermes adapter — invoke planner, receive JSON only
+- [x] OpenClaw adapter — gateway API with permission scopes
 - [ ] Feedback loop — execution results back to Hermes
 - [ ] Retry logic with alternative plans
 - [ ] Rollback capability for file operations

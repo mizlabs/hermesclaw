@@ -15,11 +15,11 @@ class PlanSigner:
     """Sign ValidatedPlan after approval; OpenClaw verifies before execute."""
 
     def __init__(self, secret: str, *, token_ttl_sec: int = 300) -> None:
-        if not secret or secret == "CHANGE_ME_IN_PRODUCTION":  # noqa: S105
+        if not secret:
             import warnings
 
             warnings.warn(
-                "Using default PLAN_SIGNING_SECRET — set a strong secret in production.",
+                "PLAN_SIGNING_SECRET is not set — set a strong secret in .env for production.",
                 stacklevel=2,
             )
         self._secret = secret.encode("utf-8")

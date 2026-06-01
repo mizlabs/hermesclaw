@@ -28,6 +28,11 @@ def main() -> None:
         action="store_true",
         help="Use mock Hermes planner (no CLI required)",
     )
+    parser.add_argument(
+        "--check-gateway",
+        action="store_true",
+        help="Verify OpenClaw gateway connectivity and configuration",
+    )
     args = parser.parse_args()
 
     settings = Settings()
@@ -40,6 +45,26 @@ def main() -> None:
         settings = settings.model_copy(update=updates)
 
     configure_logging(settings.log_level)
+
+    if args.check_gateway:
+        from hermes_openclaw.openclaw.gateway_client import OpenClawGatewayClient
+
+        client = OpenClawGatewayClient(
+            settings.openclaw_gateway_url,
+            token=settings.openclaw_gateway_token,
+            session_key=settings.openclaw_gateway_session_key,
+            timeout_sec=float(settings.openclaw_gateway_timeout_sec),
+        )
+        gateway_report = {
+            "gateway_url": settings.openclaw_gateway_url,
+            "execution_mode": settings.openclaw_execution_mode,
+            "token_configured": bool(settings.openclaw_gateway_token),
+            "openclaw_cli": settings.openclaw_cli_path,
+            "agent_fallback": settings.openclaw_agent_execution,
+            "ping_ok": client.ping(),
+        }
+        print(json.dumps(gateway_report, indent=2))
+        sys.exit(0 if gateway_report["ping_ok"] else 1)
 
     if args.serve:
         import uvicorn

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,8 +24,13 @@ class Settings(BaseSettings):
 
     # OpenClaw (executor — sandboxed)
     openclaw_gateway_url: str = "http://localhost:18789"
+    openclaw_gateway_token: str = ""
+    openclaw_gateway_session_key: str = "main"
+    openclaw_gateway_timeout_sec: int = Field(default=30, ge=1, le=300)
+    openclaw_execution_mode: Literal["auto", "local", "gateway"] = "auto"
     openclaw_workspace: str = "./workspace"
     openclaw_cli_path: str = "openclaw"
+    openclaw_agent_execution: bool = True
 
     # Security
     workspace_root: Path = Path("./workspace")
@@ -35,7 +42,7 @@ class Settings(BaseSettings):
     max_retry_attempts: int = Field(default=3, ge=0, le=10)
     hermes_mock_mode: bool = True
     policy_file: Path = Path("./config/policy.yaml")
-    plan_signing_secret: str = Field(default="CHANGE_ME_IN_PRODUCTION")  # noqa: S105
+    plan_signing_secret: str = Field(default="")
     token_ttl_sec: int = Field(default=300, ge=60, le=3600)
     require_signed_token: bool = True
 
@@ -67,3 +74,41 @@ class Settings(BaseSettings):
                 stacklevel=2,
             )
         return value
+
+    @field_validator("hermes_cli_path", mode="after")
+    @classmethod
+    def resolve_hermes_cli(cls, value: str) -> str:
+        candidate = Path(value).expanduser()
+        if candidate.is_file():
+            return str(candidate)
+        found = shutil.which(value)
+        if found:
+            return found
+        default = Path.home() / ".local/bin/hermes"
+        if default.is_file():
+            return str(default)
+        return value
+
+    @field_validator("openclaw_cli_path", mode="after")
+    @classmethod
+    def resolve_openclaw_cli(cls, value: str) -> str:
+        candidate = Path(value).expanduser()
+        if candidate.is_file():
+            return str(candidate)
+        found = shutil.which(value)
+        if found:
+            return found
+        default = Path.home() / ".local/bin/openclaw"
+        if default.is_file():
+            return str(default)
+        return value
+
+    @field_validator("openclaw_execution_mode")
+    @classmethod
+    def validate_execution_mode(cls, value: str) -> str:
+        allowed = {"auto", "local", "gateway"}
+        normalized = value.strip().lower()
+        if normalized not in allowed:
+            msg = f"OPENCLAW_EXECUTION_MODE must be one of {sorted(allowed)}"
+            raise ValueError(msg)
+        return normalized

@@ -50,7 +50,7 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S108"]
+"tests/**" = ["S101", "S106", "S108"]
 "tests/chaos/**" = ["S101", "S106"]
 "src/hermes_openclaw/api/dashboard.py" = ["E501"]
 
