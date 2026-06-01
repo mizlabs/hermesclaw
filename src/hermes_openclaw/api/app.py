@@ -33,6 +33,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(create_dashboard_router(audit, rate_limiter))
 
+    @app.get("/", include_in_schema=False)
+    async def root() -> dict[str, str]:
+        return {
+            "service": "HermesClaw",
+            "dashboard": "/dashboard",
+            "docs": "/docs",
+            "health": "/health",
+        }
+
     @app.get("/health")
     async def health() -> dict[str, str]:
         valid, msg = audit.verify_chain()
