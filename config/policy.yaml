@@ -1,0 +1,22 @@
+# Configurable security policy — deterministic rules, independent from the LLM.
+
+rules:
+  deny:
+    - filesystem.delete.system
+    - terminal.unrestricted
+    - desktop.control
+    - network.enabled
+
+  require_confirmation:
+    - filesystem.write
+    - applications.launch
+    - terminal.restricted
+
+  allow:
+    - filesystem.read
+    - filesystem.read.workspace
+
+# Execution rate limits — prevents runaway agents
+limits:
+  max_actions_per_minute: 20
+  max_parallel_tasks: 3

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermesclaw.dev/schemas/validated_plan.schema.json",
+  "title": "ValidatedPlan",
+  "description": "Fully validated plan ready for Permission Engine and OpenClaw. OpenClaw receives ONLY this object — never raw Hermes output.",
+  "type": "object",
+  "required": ["validation_id", "plan", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "validation_id": {
+      "type": "string",
+      "description": "Unique identifier for this validation run"
+    },
+    "plan": { "$ref": "task_plan.schema.json" },
+    "actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ValidatedAction" }
+    },
+    "granted_scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "security_level": {
+      "type": "string",
+      "enum": ["safe", "elevated", "dangerous", "critical"],
+      "default": "safe"
+    },
+    "execution_token": {
+      "oneOf": [
+        { "$ref": "execution_token.schema.json" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "ValidatedAction": {
+      "type": "object",
+      "required": ["action", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "$ref": "task_plan.schema.json#/$defs/TaskAction" },
+        "scope": {
+          "type": "string",
+          "description": "Primary permission scope for this action"
+        },
+        "required_scopes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "resolved_source": { "type": ["string", "null"] },
+        "resolved_destination": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

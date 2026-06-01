@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermesclaw.dev/schemas/rejection_explanation.schema.json",
+  "title": "RejectionExplanation",
+  "description": "Structured explainability for blocked or rejected actions.",
+  "type": "object",
+  "required": ["rejected", "category", "human_readable"],
+  "additionalProperties": false,
+  "properties": {
+    "rejected": {
+      "type": "boolean",
+      "const": true
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "schema_validation",
+        "action_not_allowlisted",
+        "path_outside_workspace",
+        "permission_scope_denied",
+        "policy_rule_violation",
+        "command_not_allowlisted",
+        "rate_limit_exceeded",
+        "forbidden_field_in_plan",
+        "security_level_exceeded",
+        "invalid_execution_token",
+        "hallucinated_action"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "human_readable": {
+      "type": "string",
+      "description": "Human-readable rejection summary with bullet reasons"
+    },
+    "blocked_action": { "type": ["string", "null"] },
+    "policy_rule": { "type": ["string", "null"] }
+  }
+}

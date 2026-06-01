@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermesclaw.dev/schemas/execution_token.schema.json",
+  "title": "ExecutionToken",
+  "description": "Cryptographic token authorizing a specific ValidatedPlan for execution.",
+  "type": "object",
+  "required": ["plan_hash", "signature", "validation_id", "task_id", "issued_at", "expires_at"],
+  "additionalProperties": false,
+  "properties": {
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hash of canonical ValidatedPlan JSON"
+    },
+    "signature": {
+      "type": "string",
+      "description": "HMAC-SHA256 signature of plan_hash"
+    },
+    "validation_id": {
+      "type": "string",
+      "description": "Must match ValidatedPlan.validation_id"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Must match ValidatedPlan.plan.task_id"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Token issuance timestamp (UTC)"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Token expiry timestamp (UTC)"
+    }
+  }
+}

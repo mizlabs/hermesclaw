@@ -1,0 +1,22 @@
+services:
+  hermesclaw:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./workspace:/app/workspace
+      - ./logs:/app/logs
+      - ./data:/app/data
+    environment:
+      - NETWORK_ENABLED=false
+      - DRY_RUN=true
+      - AUTO_APPROVE=false
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

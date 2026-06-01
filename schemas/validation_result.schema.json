@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermesclaw.dev/schemas/validation_result.schema.json",
+  "title": "ValidationResult",
+  "description": "Outcome of SecurityValidator.validate().",
+  "type": "object",
+  "required": ["valid"],
+  "additionalProperties": false,
+  "properties": {
+    "valid": {
+      "type": "boolean",
+      "description": "Whether the plan passed all security checks"
+    },
+    "validated_plan": {
+      "oneOf": [
+        { "$ref": "validated_plan.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "blocked_action": { "type": ["string", "null"] },
+    "reason": { "type": "string", "default": "" },
+    "explanation": {
+      "oneOf": [
+        { "$ref": "rejection_explanation.schema.json" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

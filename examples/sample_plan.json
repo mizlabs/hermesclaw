@@ -1,0 +1,19 @@
+{
+  "task_id": "example-001",
+  "intent": "organize_downloads",
+  "actions": [
+    {
+      "type": "create_folder",
+      "destination": "Documents/PDFs",
+      "scope": "filesystem.write"
+    },
+    {
+      "type": "list_files",
+      "source": ".",
+      "scope": "filesystem.read"
+    }
+  ],
+  "risk_level": "medium",
+  "requires_confirmation": true,
+  "dry_run": true
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "demo-approval-005",
+  "intent": "Write files and launch VS Code for review",
+  "actions": [
+    {
+      "type": "create_folder",
+      "destination": "project/src",
+      "scope": "filesystem.write"
+    },
+    {
+      "type": "launch_app",
+      "app_name": "Visual Studio Code",
+      "scope": "applications.launch"
+    }
+  ],
+  "risk_level": "high",
+  "requires_confirmation": true,
+  "dry_run": true
+}

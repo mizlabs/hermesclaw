@@ -1,0 +1,13 @@
+{
+  "task_id": "demo-dangerous-003",
+  "intent": "Delete sensitive system files",
+  "actions": [
+    {
+      "type": "delete_file",
+      "source": "/etc/passwd"
+    }
+  ],
+  "risk_level": "critical",
+  "requires_confirmation": true,
+  "dry_run": false
+}

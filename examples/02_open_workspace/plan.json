@@ -1,0 +1,14 @@
+{
+  "task_id": "demo-workspace-002",
+  "intent": "Open workspace and list all files",
+  "actions": [
+    {
+      "type": "list_files",
+      "source": ".",
+      "scope": "filesystem.read"
+    }
+  ],
+  "risk_level": "low",
+  "requires_confirmation": false,
+  "dry_run": true
+}

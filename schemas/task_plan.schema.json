@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermesclaw.dev/schemas/task_plan.schema.json",
+  "title": "TaskPlan",
+  "description": "Hermes output schema — structured JSON only, never raw instructions.",
+  "type": "object",
+  "required": ["intent", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Unique identifier for this task plan"
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "description": "Natural-language description of user intent"
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/TaskAction" }
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "default": "low"
+    },
+    "requires_confirmation": {
+      "type": "boolean",
+      "default": false
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "$defs": {
+    "TaskAction": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "move_file",
+            "copy_file",
+            "create_folder",
+            "list_files",
+            "launch_app",
+            "exec"
+          ]
+        },
+        "source": { "type": ["string", "null"] },
+        "destination": { "type": ["string", "null"] },
+        "command": { "type": ["string", "null"] },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "app_name": { "type": ["string", "null"] },
+        "scope": { "type": ["string", "null"] },
+        "params": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "move_file" } } },
+          "then": { "required": ["source", "destination"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "copy_file" } } },
+          "then": { "required": ["source", "destination"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "create_folder" } } },
+          "then": { "required": ["destination"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "list_files" } } },
+          "then": { "required": ["source"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "launch_app" } } },
+          "then": { "required": ["app_name"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "exec" } } },
+          "then": { "required": ["command"] }
+        }
+      ]
+    }
+  }
+}

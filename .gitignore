@@ -1,0 +1,74 @@
+# Environment
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project data
+data/
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# Node (OpenClaw workspace artifacts)
+node_modules/
+.openclaw/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Secrets
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Build artifacts
+*.pyc
+.mypy_cache/
+.ruff_cache/

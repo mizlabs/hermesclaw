@@ -1,0 +1,24 @@
+{
+  "task_id": "demo-organize-001",
+  "intent": "Organize workspace: create PDF folder and list current files",
+  "actions": [
+    {
+      "type": "create_folder",
+      "destination": "Documents/PDFs",
+      "scope": "filesystem.write"
+    },
+    {
+      "type": "create_folder",
+      "destination": "Documents/Images",
+      "scope": "filesystem.write"
+    },
+    {
+      "type": "list_files",
+      "source": ".",
+      "scope": "filesystem.read"
+    }
+  ],
+  "risk_level": "medium",
+  "requires_confirmation": true,
+  "dry_run": true
+}
