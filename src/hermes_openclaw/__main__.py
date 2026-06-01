@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import sys
 
@@ -12,7 +11,7 @@ from hermes_openclaw.controller.factory import build_orchestrator, build_pipelin
 from hermes_openclaw.logging_setup import configure_logging
 
 
-async def main() -> None:
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="HermesClaw: A security-first open-source local AI agent framework"
     )
@@ -81,7 +80,7 @@ async def main() -> None:
 
 def run() -> None:
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         sys.exit(0)
 

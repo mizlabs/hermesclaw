@@ -113,11 +113,20 @@ class HermesAdapter(ABC):
         """Convert natural language intent into a structured task plan dict."""
 
     def plan(self, user_intent: str, *, context: str = "") -> dict[str, Any]:
-        """Sync wrapper for CLI usage."""
+        """Sync wrapper for CLI and pipeline usage."""
         import asyncio
 
         ctx = {"replan_context": context} if context else {}
-        return asyncio.run(self.generate_plan(user_intent, ctx))
+        coro = self.generate_plan(user_intent, ctx)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+        # Called from an async context — run in a dedicated thread to avoid nested loops.
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
 
 
 class MockHermesAdapter(HermesAdapter):

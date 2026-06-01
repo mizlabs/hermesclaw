@@ -50,7 +50,7 @@ def _build_core(
         command_policy=CommandPolicy(),
         policy_engine=policy_engine,
     )
-    approval = ApprovalGate(auto_approve=settings.auto_approve)
+    approval = ApprovalGate(auto_approve=settings.auto_approve or settings.dry_run)
     permission_engine = PermissionEngine(security_validator, approval, audit, plan_signer)
     permission_gateway = PermissionGateway(permission_engine)
     openclaw = OpenClawAdapter(
