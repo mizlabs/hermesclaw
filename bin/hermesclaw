@@ -5,6 +5,7 @@
 #   bin/hermesclaw "intent text"  -> direct one-shot execution
 #   bin/hermesclaw --safe "intent" -> preview + approval before execution
 #   bin/hermesclaw --auto "intent" -> one-shot with AUTO_APPROVE=true
+#   bin/hermesclaw --fast "intent" -> heuristic planner for common intents
 
 set -euo pipefail
 
@@ -53,6 +54,11 @@ run_intent_real() {
   else
     PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --summary
   fi
+}
+
+run_intent_fast() {
+  local intent_text="$1"
+  PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --summary --fast
 }
 
 is_ambiguous_intent() {
@@ -168,6 +174,10 @@ if [ "$#" -ge 1 ]; then
     shift
     intent="$*"
     run_intent_real "$intent" true
+  elif [ "$1" = "--fast" ] || [ "$1" = "fast" ]; then
+    shift
+    intent="$*"
+    run_intent_fast "$intent"
   else
     intent="$*"
     run_intent_direct "$intent"
@@ -188,6 +198,7 @@ while true; do
     safe*) intent=${line#safe } ; run_intent_safe "$intent" ;;
     --safe*) intent=${line#--safe } ; run_intent_safe "$intent" ;;
     --auto*) intent=${line#--auto } ; run_intent_real "$intent" true ;;
+    --fast*) intent=${line#--fast } ; run_intent_fast "$intent" ;;
     "") continue ;;
     *) run_intent_direct "$line" ;;
   esac

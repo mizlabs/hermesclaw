@@ -31,6 +31,11 @@ def main() -> None:
         help="Use mock Hermes planner (no CLI required)",
     )
     parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Use the fast heuristic planner for common intents",
+    )
+    parser.add_argument(
         "--check-gateway",
         action="store_true",
         help="Verify OpenClaw gateway connectivity and configuration",
@@ -59,6 +64,8 @@ def main() -> None:
         updates["dry_run"] = True
     if args.mock_hermes:
         updates["hermes_mock_mode"] = True
+    if args.fast:
+        updates["hermes_fast_mode"] = True
     if updates:
         settings = settings.model_copy(update=updates)
 

@@ -6,7 +6,9 @@ import json
 import re
 import subprocess
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import Any
+from urllib.parse import quote_plus
 
 import structlog
 
@@ -162,6 +164,119 @@ class MockHermesAdapter(HermesAdapter):
             "requires_confirmation": True,
             "dry_run": True,
         }
+
+
+class FastHermesAdapter(HermesAdapter):
+    """Rule-based planner for common intents to avoid Hermes latency."""
+
+    def __init__(self, cli_path: str = "hermes", *, workspace_root: str | None = None) -> None:
+        self._cli_path = cli_path
+        self._workspace_root = workspace_root
+
+    async def generate_plan(self, user_input: str, context: dict | None = None) -> dict[str, Any]:
+        plan = self._plan_for_intent(user_input)
+        if plan is not None:
+            logger.info("fast_hermes_plan", intent=user_input, mode="heuristic")
+            return plan
+        logger.info("fast_hermes_plan", intent=user_input, mode="fallback")
+        return await CliHermesAdapter(
+            cli_path=self._cli_path,
+            workspace_root=self._workspace_root,
+        ).generate_plan(user_input, context)
+
+    @staticmethod
+    @lru_cache(maxsize=256)
+    def _plan_for_intent(user_input: str) -> dict[str, Any] | None:
+        intent = user_input.strip()
+        lowered = intent.lower()
+
+        if not intent:
+            return None
+
+        if any(token in lowered for token in ("list files", "show files", "find files")):
+            return {
+                "intent": intent,
+                "actions": [{"type": "list_files", "source": ".", "scope": "filesystem.read"}],
+                "risk_level": "low",
+                "requires_confirmation": False,
+                "dry_run": True,
+            }
+
+        if any(
+            token in lowered
+            for token in ("create folder", "new folder", "make folder", "organize", "sort files")
+        ):
+            destination = "output"
+            return {
+                "intent": intent,
+                "actions": [
+                    {
+                        "type": "create_folder",
+                        "destination": destination,
+                        "scope": "filesystem.write",
+                    },
+                    {
+                        "type": "list_files",
+                        "source": ".",
+                        "scope": "filesystem.read",
+                    },
+                ],
+                "risk_level": "medium",
+                "requires_confirmation": True,
+                "dry_run": True,
+            }
+
+        if any(token in lowered for token in ("youtube", "video", "music", "play", "search")):
+            query = intent
+            browser_url = FastHermesAdapter._browser_search_url(lowered, query)
+            return {
+                "intent": intent,
+                "actions": [
+                    {
+                        "type": "exec",
+                        "command": "open",
+                        "args": [browser_url],
+                        "scope": "applications.launch",
+                    }
+                ],
+                "risk_level": "medium",
+                "requires_confirmation": True,
+                "dry_run": True,
+            }
+
+        if any(token in lowered for token in ("open ", "launch ")):
+            app_name = FastHermesAdapter._extract_app_name(intent)
+            if app_name:
+                return {
+                    "intent": intent,
+                    "actions": [
+                        {"type": "launch_app", "app_name": app_name, "scope": "applications.launch"}
+                    ],
+                    "risk_level": "medium",
+                    "requires_confirmation": True,
+                    "dry_run": True,
+                }
+
+        return None
+
+    @staticmethod
+    def _browser_search_url(lowered_intent: str, intent: str) -> str:
+        query = intent
+        for prefix in ("open youtube and play ", "play ", "search for ", "search "):
+            if lowered_intent.startswith(prefix):
+                query = intent[len(prefix) :].strip()
+                break
+        if "youtube" in lowered_intent or "video" in lowered_intent or "music" in lowered_intent:
+            return f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+        return f"https://www.google.com/search?q={quote_plus(query)}"
+
+    @staticmethod
+    def _extract_app_name(intent: str) -> str | None:
+        match = re.search(r"\b(?:open|launch)\s+(.+)$", intent, re.I)
+        if not match:
+            return None
+        app_name = match.group(1).strip().strip("\"'")
+        return app_name or None
 
 
 class CliHermesAdapter(HermesAdapter):

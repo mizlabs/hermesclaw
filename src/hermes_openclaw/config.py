@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     hermes_model_endpoint: str = "http://localhost:11434/v1"
     hermes_model_name: str = "llama3.2"
     hermes_cli_path: str = "hermes"
+    hermes_fast_mode: bool = False
 
     # OpenClaw (executor — sandboxed)
     openclaw_gateway_url: str = "http://localhost:18789"

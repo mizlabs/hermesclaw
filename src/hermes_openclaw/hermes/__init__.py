@@ -3,6 +3,7 @@
 from hermes_openclaw.hermes.adapter import (
     HERMES_PLANNER_PROMPT,
     CliHermesAdapter,
+    FastHermesAdapter,
     HermesAdapter,
     HermesAdapterError,
     MockHermesAdapter,
@@ -13,6 +14,7 @@ from hermes_openclaw.hermes.adapter import (
 __all__ = [
     "HERMES_PLANNER_PROMPT",
     "CliHermesAdapter",
+    "FastHermesAdapter",
     "HermesAdapter",
     "HermesAdapterError",
     "MockHermesAdapter",

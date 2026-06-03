@@ -8,7 +8,12 @@ from hermes_openclaw.config import Settings
 from hermes_openclaw.controller.orchestrator import Orchestrator
 from hermes_openclaw.controller.pipeline import AgentPipeline
 from hermes_openclaw.feedback.engine import FeedbackEngine
-from hermes_openclaw.hermes.adapter import CliHermesAdapter, HermesAdapter, MockHermesAdapter
+from hermes_openclaw.hermes.adapter import (
+    CliHermesAdapter,
+    FastHermesAdapter,
+    HermesAdapter,
+    MockHermesAdapter,
+)
 from hermes_openclaw.openclaw.adapter import OpenClawAdapter
 from hermes_openclaw.security.approval_gate import ApprovalGate
 from hermes_openclaw.security.audit import AuditLogger
@@ -86,6 +91,11 @@ def _build_core(
 def build_hermes_adapter(settings: Settings) -> HermesAdapter:
     if settings.hermes_mock_mode:
         return MockHermesAdapter()
+    if settings.hermes_fast_mode:
+        return FastHermesAdapter(
+            cli_path=settings.hermes_cli_path,
+            workspace_root=str(settings.workspace_root.resolve()),
+        )
     return CliHermesAdapter(
         cli_path=settings.hermes_cli_path,
         workspace_root=str(settings.workspace_root.resolve()),
