@@ -81,8 +81,13 @@ def _normalize_risk_level(raw_risk: Any, actions: list[dict[str, Any]]) -> str:
     normalize any such plan to at least `medium` so the validator can accept it.
     """
     risk = str(raw_risk).strip().lower() if raw_risk is not None else RiskLevel.LOW.value
-    has_exec = any(action.get("type") == "exec" for action in actions)
-    has_file_ops = any(action.get("type") in {"move_file", "copy_file", "create_folder"} for action in actions)
+    has_exec = any(
+        action.get("type") == "exec" for action in actions
+    )
+    has_file_ops = any(
+        action.get("type") in {"move_file", "copy_file", "create_folder"}
+        for action in actions
+    )
     if risk == RiskLevel.LOW.value and (has_exec or has_file_ops):
         return RiskLevel.MEDIUM.value
     return risk

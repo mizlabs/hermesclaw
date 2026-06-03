@@ -109,7 +109,12 @@ def main() -> None:
                 print(f"Status: {execution_report.status.value}")
                 for action_result in execution_report.results:
                     print(
-                        f"- {action_result.action_type}: {action_result.status.value} -> {action_result.message}"
+                        "- "
+                        + action_result.action_type
+                        + ": "
+                        + action_result.status.value
+                        + " -> "
+                        + action_result.message
                     )
         else:
             print(json.dumps(result.model_dump(mode="json"), indent=2))
@@ -127,7 +132,12 @@ def main() -> None:
                 print(f"Reason: {report.reason}")
             for action_result in report.results:
                 print(
-                    f"- {action_result.action_type}: {action_result.status.value} -> {action_result.message}"
+                    "- "
+                    + action_result.action_type
+                    + ": "
+                    + action_result.status.value
+                    + " -> "
+                    + action_result.message
                 )
         else:
             print(json.dumps(report.model_dump(mode="json"), indent=2))

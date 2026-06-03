@@ -43,7 +43,12 @@ def _format_result_for_chat(result: PipelineResult, safe_mode: bool) -> str:
         lines.append(f"Status: {report.status.value}")
         for action_result in report.results:
             lines.append(
-                f"- {action_result.action_type}: {action_result.status.value} -> {action_result.message}"
+                "- "
+                + action_result.action_type
+                + ": "
+                + action_result.status.value
+                + " -> "
+                + action_result.message
             )
     return "\n".join(lines)
 

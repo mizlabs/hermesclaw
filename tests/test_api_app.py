@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import hermes_openclaw.api.app as app_module
 from fastapi.testclient import TestClient
 
+import hermes_openclaw.api.app as app_module
 from hermes_openclaw.api.app import create_app
 from hermes_openclaw.config import Settings
 
@@ -48,7 +48,7 @@ def test_telegram_webhook_runs_safe_mode_by_default(tmp_path: Path, monkeypatch)
     sent: list[tuple[int, str]] = []
 
     def _fake_send(bot_token: str, chat_id: int, text: str) -> None:
-        assert bot_token == "bot-token"
+        assert bot_token == "bot-token"  # nosec
         sent.append((chat_id, text))
 
     monkeypatch.setattr(app_module, "_send_telegram_message", _fake_send)
