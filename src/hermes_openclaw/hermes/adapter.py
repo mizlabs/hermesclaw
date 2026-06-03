@@ -199,7 +199,7 @@ class FastHermesAdapter(HermesAdapter):
                 "actions": [{"type": "list_files", "source": ".", "scope": "filesystem.read"}],
                 "risk_level": "low",
                 "requires_confirmation": False,
-                "dry_run": True,
+                "dry_run": False,
             }
 
         if any(
@@ -223,7 +223,7 @@ class FastHermesAdapter(HermesAdapter):
                 ],
                 "risk_level": "medium",
                 "requires_confirmation": True,
-                "dry_run": True,
+                "dry_run": False,
             }
 
         if any(token in lowered for token in ("youtube", "video", "music", "play", "search")):
@@ -241,7 +241,7 @@ class FastHermesAdapter(HermesAdapter):
                 ],
                 "risk_level": "medium",
                 "requires_confirmation": True,
-                "dry_run": True,
+                "dry_run": False,
             }
 
         if any(token in lowered for token in ("open ", "launch ")):
@@ -254,7 +254,7 @@ class FastHermesAdapter(HermesAdapter):
                     ],
                     "risk_level": "medium",
                     "requires_confirmation": True,
-                    "dry_run": True,
+                    "dry_run": False,
                 }
 
         return None
