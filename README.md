@@ -134,6 +134,38 @@ python -m hermes_openclaw --serve
 # http://127.0.0.1:8000/docs
 ```
 
+Production API hardening:
+
+```bash
+export API_HOST=0.0.0.0
+export API_BEARER_TOKEN='replace-with-long-random-token'
+python -m hermes_openclaw --serve
+```
+
+Authenticated intent execution:
+
+```bash
+curl -X POST http://127.0.0.1:8000/intents/execute \
+  -H "Authorization: Bearer ${API_BEARER_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"organize my project files","safe_mode":true}'
+```
+
+Telegram control plane (safe mode by default):
+
+```bash
+export NETWORK_ENABLED=true
+export TELEGRAM_BOT_TOKEN='<telegram-bot-token>'
+export TELEGRAM_WEBHOOK_SECRET='<telegram-webhook-secret>'
+export TELEGRAM_ALLOWED_CHAT_IDS='123456789,-1009876543210'
+```
+
+Webhook endpoint: `/integrations/telegram/webhook`
+
+- `/safe <intent>`: dry-run safety mode
+- `/run <intent>`: direct execution
+- plain text: treated as safe mode by default
+
 Docker:
 
 ```bash

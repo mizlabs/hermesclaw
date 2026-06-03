@@ -12,6 +12,10 @@ services:
       - DRY_RUN=true
       - AUTO_APPROVE=false
       - LOG_LEVEL=INFO
+      - API_BEARER_TOKEN=${API_BEARER_TOKEN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
+      - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
     restart: unless-stopped
     read_only: true
     tmpfs:

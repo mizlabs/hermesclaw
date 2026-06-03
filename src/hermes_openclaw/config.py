@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Any
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -54,6 +55,12 @@ class Settings(BaseSettings):
     # API (binds localhost only by default)
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+    api_bearer_token: str = ""
+
+    # Integrations
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
+    telegram_allowed_chat_ids: list[int] = Field(default_factory=list)
 
     @field_validator(
         "workspace_root", "memory_db_path", "audit_log_path", "policy_file", mode="before"
@@ -112,3 +119,17 @@ class Settings(BaseSettings):
             msg = f"OPENCLAW_EXECUTION_MODE must be one of {sorted(allowed)}"
             raise ValueError(msg)
         return normalized
+
+    @field_validator("telegram_allowed_chat_ids", mode="before")
+    @classmethod
+    def parse_telegram_allowed_chat_ids(cls, value: Any) -> list[int]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return []
+            return [int(part.strip()) for part in raw.split(",") if part.strip()]
+        if isinstance(value, list):
+            return [int(item) for item in value]
+        raise ValueError("TELEGRAM_ALLOWED_CHAT_IDS must be a comma-separated string or list")
