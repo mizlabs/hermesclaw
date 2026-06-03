@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# HermesClaw helper: interactive REPL to send intents to HermesClaw
+# Usage:
+#   bin/hermesclaw                -> interactive prompt
+#   bin/hermesclaw "intent text"  -> direct one-shot execution
+#   bin/hermesclaw --safe "intent" -> preview + approval before execution
+#   bin/hermesclaw --auto "intent" -> one-shot with AUTO_APPROVE=true
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
+
+# Load project .env if present (do not export into git)
+if [ -f ".env" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  source .env
+  set +a
+fi
+
+# Activate venv if present
+if [ -f ".venv/bin/activate" ]; then
+  # shellcheck disable=SC1091
+  source .venv/bin/activate
+fi
+
+# Ensure openclaw on PATH for this session
+export PATH="$HOME/.local/bin:$PATH"
+
+# Prefer the fnm-managed Node 22 runtime so OpenClaw agent sees a supported node version.
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env --shell bash)"
+fi
+
+PYTHON="${VIRTUAL_ENV:-$ROOT_DIR/.venv}/bin/python"
+if [ ! -x "$PYTHON" ]; then
+  # fallback to system python
+  PYTHON=$(command -v python3 || command -v python || true)
+fi
+
+run_plan_file() {
+  plan_path="$1"
+  echo "Running plan: $plan_path"
+  PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --plan "$plan_path" --summary
+}
+
+run_intent_real() {
+  intent_text="$1"
+  auto_approve="${2:-false}"
+  if [ "$auto_approve" = "true" ]; then
+    AUTO_APPROVE=true PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --summary
+  else
+    PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --summary
+  fi
+}
+
+is_ambiguous_intent() {
+  local text="$1"
+  local lower
+  lower=$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')
+  if echo "$lower" | grep -Eq '(this or that|something|anything|whatever|a song|a video|some music|music|song|video)'; then
+    return 0
+  fi
+  return 1
+}
+
+ask_clarification() {
+  local text="$1"
+  local answer=""
+  printf "I need one detail before I plan this. Which song, video, or exact thing should I use? " >&2
+  if ! IFS= read -r answer; then
+    echo >&2
+    return 1
+  fi
+  if [ -z "$answer" ]; then
+    echo "Aborted." >&2
+    return 1
+  fi
+  case "$answer" in
+    n|N|no|NO|quit|exit|abort)
+      echo "Aborted." >&2
+    return 1
+      ;;
+  esac
+  printf '%s %s\n' "$text" "$answer"
+}
+
+run_brainstorm() {
+  local intent_text="$1"
+  printf '\n\033[1;35mBrainstorm\033[0m\n'
+  PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --dry-run --summary
+  echo "No execution was started. Refine the intent or run again with approval when ready."
+}
+
+run_intent_safe() {
+  intent_text="$1"
+  if is_ambiguous_intent "$intent_text"; then
+    clarified=$(ask_clarification "$intent_text") || return
+    intent_text="$clarified"
+  fi
+
+  printf '\n\033[1;34mPlan Preview\033[0m\n'
+  PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --dry-run --summary
+
+  while true; do
+    printf "Approve and execute plan? [y/N/preview/help]: "
+    if ! IFS= read -r resp; then
+      echo
+      return
+    fi
+    case "$resp" in
+      y|Y)
+        echo "Executing..."
+        run_intent_real "$intent_text" true
+        mkdir -p .hermes_history
+        timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        echo "$timestamp :: $intent_text" >> .hermes_history/history.txt
+        break
+        ;;
+      n|N|"")
+        echo "Aborted."
+        break
+        ;;
+      preview)
+        PYTHONWARNINGS=ignore HERMESCLAW_QUIET=1 "$PYTHON" -m hermes_openclaw --intent "$intent_text" --dry-run --summary
+        ;;
+      help)
+        echo "y = execute, n = abort, preview = show summary again, brainstorm = no execution"
+        ;;
+      brainstorm)
+        run_brainstorm "$intent_text"
+        break
+        ;;
+      *)
+        echo "Please answer y, n, preview, or brainstorm"
+        ;;
+    esac
+  done
+}
+
+run_intent_direct() {
+  local intent_text="$1"
+
+  if is_ambiguous_intent "$intent_text"; then
+    clarified=$(ask_clarification "$intent_text") || return
+    intent_text="$clarified"
+  fi
+
+  if run_intent_real "$intent_text"; then
+    mkdir -p .hermes_history
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    echo "$timestamp :: $intent_text" >> .hermes_history/history.txt
+  fi
+}
+
+if [ "$#" -ge 1 ]; then
+  # one-shot mode
+  if [ "$1" = "--brainstorm" ] || [ "$1" = "brainstorm" ]; then
+    shift
+    intent="$*"
+    run_brainstorm "$intent"
+  elif [ "$1" = "--safe" ] || [ "$1" = "safe" ]; then
+    shift
+    intent="$*"
+    run_intent_safe "$intent"
+  elif [ "$1" = "--auto" ] || [ "$1" = "-y" ]; then
+    shift
+    intent="$*"
+    run_intent_real "$intent" true
+  else
+    intent="$*"
+    run_intent_direct "$intent"
+  fi
+  exit 0
+fi
+
+echo "HermesClaw interactive helper"
+echo "Type an intent (or 'exit' to quit). Prefix with --auto to auto-approve."
+while true; do
+  printf "hermes> "
+  if ! IFS= read -r line; then
+    echo; break
+  fi
+  case "$line" in
+    exit|quit) break ;;
+    brainstorm*) intent=${line#brainstorm } ; run_brainstorm "$intent" ;;
+    safe*) intent=${line#safe } ; run_intent_safe "$intent" ;;
+    --safe*) intent=${line#--safe } ; run_intent_safe "$intent" ;;
+    --auto*) intent=${line#--auto } ; run_intent_real "$intent" true ;;
+    "") continue ;;
+    *) run_intent_direct "$line" ;;
+  esac
+done
+
+echo "Goodbye."

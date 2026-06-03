@@ -40,6 +40,9 @@ Rules:
 - Never include shell, script, eval, or raw_command fields.
 - Use only the allowed action types listed above.
 - All paths must be relative to the workspace (e.g. "output/demo", not absolute paths).
+- Do not invent or guess missing details. If the intent is ambiguous, preserve the user's exact words in the intent field and choose the safest minimal action that matches the words.
+- For app-launch / browser-open / media-playback requests, use risk_level "medium" and requires_confirmation true.
+- For YouTube/browser/media requests, prefer a single exec action that opens a browser or search URL using the user's actual query terms rather than a fabricated song/video title.
 - Classify risk accurately: file operations (create_folder, copy_file, move_file,
   list_files) must use risk_level "medium" or higher; exec actions must use "medium" or higher.
 """

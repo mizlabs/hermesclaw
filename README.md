@@ -86,6 +86,15 @@ Natural language (mock planner):
 python -m hermes_openclaw --intent "organize my project files" --mock-hermes --dry-run
 ```
 
+Shell wrapper:
+
+```bash
+hermesclaw "open youtube and play kun anta"
+hermesclaw --safe "open youtube and play kun anta"
+```
+
+Use the direct form for normal workspace-scoped tasks. Use `--safe` when you want the wrapper to show a preview and ask for approval first.
+
 From a plan file:
 
 ```bash

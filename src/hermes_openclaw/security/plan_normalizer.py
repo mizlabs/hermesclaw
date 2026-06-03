@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from hermes_openclaw.models.tasks import RiskLevel
+
 # Hermes may use plural action names — map to internal ActionType values.
 ACTION_ALIASES: dict[str, str] = {
     "move_files": "move_file",
@@ -39,6 +41,10 @@ def normalize_plan_dict(data: dict[str, Any]) -> dict[str, Any]:
         actions.append(normalize_action_dict(action))
 
     normalized["actions"] = actions
+    normalized["risk_level"] = _normalize_risk_level(
+        normalized.get("risk_level"),
+        actions,
+    )
     return normalized
 
 
@@ -65,3 +71,18 @@ def normalize_action_dict(action: dict[str, Any]) -> dict[str, Any]:
             normalized["source"] = None
 
     return normalized
+
+
+def _normalize_risk_level(raw_risk: Any, actions: list[dict[str, Any]]) -> str:
+    """
+    Ensure risky plans are not mislabeled as low risk.
+
+    Hermes often underestimates risk for browser/app-launch and exec actions. We
+    normalize any such plan to at least `medium` so the validator can accept it.
+    """
+    risk = str(raw_risk).strip().lower() if raw_risk is not None else RiskLevel.LOW.value
+    has_exec = any(action.get("type") == "exec" for action in actions)
+    has_file_ops = any(action.get("type") in {"move_file", "copy_file", "create_folder"} for action in actions)
+    if risk == RiskLevel.LOW.value and (has_exec or has_file_ops):
+        return RiskLevel.MEDIUM.value
+    return risk

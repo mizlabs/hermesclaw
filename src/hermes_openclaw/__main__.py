@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import warnings
 
 from hermes_openclaw.config import Settings
 from hermes_openclaw.controller.factory import build_orchestrator, build_pipeline
@@ -33,16 +35,35 @@ def main() -> None:
         action="store_true",
         help="Verify OpenClaw gateway connectivity and configuration",
     )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Print a concise human-readable summary instead of raw JSON",
+    )
+    parser.add_argument(
+        "--brainstorm",
+        action="store_true",
+        help="Alias for a non-executing, human-readable planning run",
+    )
     args = parser.parse_args()
+
+    quiet_mode = args.summary or args.brainstorm or os.getenv("HERMESCLAW_QUIET", "").strip() == "1"
+    if quiet_mode:
+        warnings.filterwarnings("ignore", message="AUTO_APPROVE is enabled.*")
 
     settings = Settings()
     updates: dict = {}
     if args.dry_run:
         updates["dry_run"] = True
+    if args.brainstorm:
+        updates["dry_run"] = True
     if args.mock_hermes:
         updates["hermes_mock_mode"] = True
     if updates:
         settings = settings.model_copy(update=updates)
+
+    if quiet_mode:
+        settings = settings.model_copy(update={"log_level": "ERROR"})
 
     configure_logging(settings.log_level)
 
@@ -78,7 +99,20 @@ def main() -> None:
     if args.intent:
         pipeline = build_pipeline(settings)
         result = pipeline.run(args.intent)
-        print(json.dumps(result.model_dump(mode="json"), indent=2))
+        if quiet_mode:
+            print(f"Intent: {result.intent}")
+            print(f"Success: {result.success}")
+            if getattr(result, "message", None):
+                print(f"Message: {result.message}")
+            execution_report = getattr(result, "execution_report", None)
+            if execution_report is not None:
+                print(f"Status: {execution_report.status.value}")
+                for action_result in execution_report.results:
+                    print(
+                        f"- {action_result.action_type}: {action_result.status.value} -> {action_result.message}"
+                    )
+        else:
+            print(json.dumps(result.model_dump(mode="json"), indent=2))
         sys.exit(0 if result.success else 1)
 
     if args.plan:
@@ -86,7 +120,17 @@ def main() -> None:
         with open(args.plan, encoding="utf-8") as f:
             raw_plan = json.load(f)
         report = orchestrator.process_plan(raw_plan)
-        print(json.dumps(report.model_dump(mode="json"), indent=2))
+        if quiet_mode:
+            print(f"Task: {report.task_id}")
+            print(f"Status: {report.status.value}")
+            if getattr(report, "reason", None):
+                print(f"Reason: {report.reason}")
+            for action_result in report.results:
+                print(
+                    f"- {action_result.action_type}: {action_result.status.value} -> {action_result.message}"
+                )
+        else:
+            print(json.dumps(report.model_dump(mode="json"), indent=2))
         sys.exit(0 if report.status.value in ("success", "dry_run") else 1)
 
     print("HermesClaw: A security-first open-source local AI agent framework")
@@ -99,6 +143,7 @@ def main() -> None:
     print()
     print("Usage:")
     print('  python -m hermes_openclaw --intent "organize my project files" --mock-hermes')
+    print('  python -m hermes_openclaw --intent "play music" --brainstorm')
     print("  python -m hermes_openclaw --plan examples/sample_plan.json --dry-run")
     print("  python -m hermes_openclaw --serve")
 
