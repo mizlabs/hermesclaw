@@ -87,7 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     pipeline = build_pipeline(settings)
     safe_pipeline = build_pipeline(settings.model_copy(update={"dry_run": True}))
 
-    expected_token = settings.api_bearer_token.strip()
+    expected_token = (settings.api_bearer_token or "").strip()
 
     async def require_api_auth(
         authorization: Annotated[str | None, Header(alias="Authorization")] = None,
@@ -95,10 +95,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> None:
         if not expected_token:
             return
-        if x_api_key and x_api_key.strip() == expected_token:
+        if x_api_key and (x_api_key or "").strip() == expected_token:
             return
         if authorization and authorization.startswith("Bearer "):
-            supplied = authorization[7:].strip()
+            supplied = (authorization[7:] or "").strip()
             if supplied == expected_token:
                 return
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -159,7 +159,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> dict[str, Any]:
         if not settings.telegram_bot_token:
             raise HTTPException(status_code=503, detail="Telegram integration is not configured")
-        if settings.telegram_webhook_secret and x_telegram_secret != settings.telegram_webhook_secret:
+        expected_secret = (settings.telegram_webhook_secret or "").strip()
+        supplied_secret = (x_telegram_secret or "").strip()
+        if expected_secret and supplied_secret != expected_secret:
             raise HTTPException(status_code=401, detail="Invalid Telegram webhook secret")
         if not settings.network_enabled:
             raise HTTPException(
