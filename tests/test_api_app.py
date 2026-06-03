@@ -48,7 +48,7 @@ def test_telegram_webhook_runs_safe_mode_by_default(tmp_path: Path, monkeypatch)
     sent: list[tuple[int, str]] = []
 
     def _fake_send(bot_token: str, chat_id: int, text: str) -> None:
-        assert bot_token == "bot-token"  # nosec
+        assert bot_token == "bot-token"  # noqa: S105
         sent.append((chat_id, text))
 
     monkeypatch.setattr(app_module, "_send_telegram_message", _fake_send)
